@@ -58,7 +58,6 @@ const getCollapseContent = ({contentHTML='', actions=[], contentName='', content
 const setLiActive = (index) => {
     const liList = document.querySelectorAll('.nav-main li')
 
-    console.log(liList)
     liList.forEach((node, ind) => {
         if (ind === index) {
             node.classList.add('nav-active')
