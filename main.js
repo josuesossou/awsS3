@@ -27,33 +27,40 @@ window.whichCredential = ''
 const getElementById = (elementId) => {
   return document.getElementById(elementId)
 }
+
 const loadCredentials = async () => {
   const settingCredentials = localStorage.getItem('settingCredentials')
   if (!settingCredentials) return 
 
   SETTING_CREDENTIALS = JSON.parse(settingCredentials)
-  aws_init(SETTING_CREDENTIALS.region, SETTING_CREDENTIALS.bucketName, 
+  aws_init(
+    SETTING_CREDENTIALS.region.toLocaleLowerCase(), 
+    SETTING_CREDENTIALS.bucketName,
     {iamCredentials: SETTING_CREDENTIALS.credentials})
   await isS3ConnectedCheck()
 
   if (s3CredentialsStatus === SUCCESS_STATUS) {
+    window.isAwsInit = true
     window.whichCredential = IAM_TEXT
     return
   }
   
-  if (s3CredentialsStatus === ERROR_STATUS) {
-    aws_init(SETTING_CREDENTIALS.region, SETTING_CREDENTIALS.bucketName, 
-      {withPoolId:false, poolID: SETTING_CREDENTIALS.poolId})
-    await isS3ConnectedCheck()
 
-    if (s3CredentialsStatus === ERROR_STATUS) {
-      window.isAwsInit = false
-      window.whichCredential = ''
-      return
-    }
-    window.whichCredential = COGNITOPOOL_TEXT
+  aws_init(
+    SETTING_CREDENTIALS.region.toLocaleLowerCase(), 
+    SETTING_CREDENTIALS.bucketName, 
+    {withPoolId:false, poolID: SETTING_CREDENTIALS.poolId})
+  await isS3ConnectedCheck()
+
+  if (s3CredentialsStatus === ERROR_STATUS) {
+    window.isAwsInit = false
+    window.whichCredential = ''
     return
   }
+
+  window.isAwsInit = true
+  window.whichCredential = COGNITOPOOL_TEXT
+  return
 }
 
 // init aws s3
@@ -89,7 +96,10 @@ const initWithIAM = () => {
     poolId: SETTING_CREDENTIALS.poolId
   }
  
-  aws_init(SETTING_CREDENTIALS.region, SETTING_CREDENTIALS.bucketName, {iamCredentials: credentials})
+  aws_init(
+    SETTING_CREDENTIALS.region.toLocaleLowerCase(), 
+    SETTING_CREDENTIALS.bucketName, 
+  {iamCredentials: credentials})
   isS3ConnectedCheck()
   .then(()=> {
     statusElement(IAM_TEXT, false)
@@ -124,7 +134,7 @@ const initWithPool = () => {
   }
  
   aws_init(
-    SETTING_CREDENTIALS.region, 
+    SETTING_CREDENTIALS.region.toLocaleLowerCase(), 
     SETTING_CREDENTIALS.bucketName, 
     {withPoolId:false, poolID: SETTING_CREDENTIALS.poolId}
   )
@@ -159,11 +169,11 @@ const isS3ConnectedCheck = async () => {
     await s3.send(
       new ListObjectsCommand({ Delimiter: '/', Bucket: bucketName,  })
     )
+
     window.s3CredentialsStatus = SUCCESS_STATUS
 
   } catch (error) {
     window.s3CredentialsStatus = ERROR_STATUS
-
   }
 }
 
