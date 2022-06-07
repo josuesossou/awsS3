@@ -148,7 +148,7 @@ const setSetting = ({isIAMDisabled=true, isPoolDisabled=true, showIAM=true} = {}
         },
         {
             name: 'Initialize Credentials', 
-            method:`onpointerup="initWithIAM()" ${isIAMDisabled ? 'disabled' : ''}`,
+            method:`onpointerup="initWithIAM()"`,
             type: 'warning'
         },
         {
@@ -167,7 +167,7 @@ const setSetting = ({isIAMDisabled=true, isPoolDisabled=true, showIAM=true} = {}
         {
             name: 'Initialize Credentials', 
             type: 'warning',
-            method:`onpointerup="initWithPool()" ${isPoolDisabled ? 'disabled' : ''}`
+            method:`onpointerup="initWithPool()"`
 
         },
         {
@@ -200,7 +200,10 @@ const setSetting = ({isIAMDisabled=true, isPoolDisabled=true, showIAM=true} = {}
     )
 
     appElement.innerHTML = template
-    setIAMSettingCredentials()
+    // setIAMSettingCredentials()
+    if (whichCredential === IAM_TEXT) {
+        statusElement(IAM_TEXT, s3CredentialsStatus === ERROR_STATUS)
+    }
 }
 
 
@@ -246,4 +249,4 @@ const setNewObject = () => {
 }
 
 
-window.onload = setDashboard()
+window.onload = setDashboard

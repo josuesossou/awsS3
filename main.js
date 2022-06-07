@@ -23,7 +23,7 @@ let SETTING_CREDENTIALS = {
 window.s3CredentialsStatus = NOT_INIT_STATUS
 window.whichCredential = ''
 
-// helpers
+/**  helper functions**/
 const getElementById = (elementId) => {
   return document.getElementById(elementId)
 }
@@ -33,10 +33,13 @@ const loadCredentials = async () => {
   if (!settingCredentials) return 
 
   SETTING_CREDENTIALS = JSON.parse(settingCredentials)
+  if (!SETTING_CREDENTIALS.region || !SETTING_CREDENTIALS.bucketName) return
+
   aws_init(
     SETTING_CREDENTIALS.region.toLocaleLowerCase(), 
     SETTING_CREDENTIALS.bucketName,
     {iamCredentials: SETTING_CREDENTIALS.credentials})
+
   await isS3ConnectedCheck()
 
   if (s3CredentialsStatus === SUCCESS_STATUS) {
@@ -45,7 +48,6 @@ const loadCredentials = async () => {
     return
   }
   
-
   aws_init(
     SETTING_CREDENTIALS.region.toLocaleLowerCase(), 
     SETTING_CREDENTIALS.bucketName, 
@@ -63,7 +65,20 @@ const loadCredentials = async () => {
   return
 }
 
-// init aws s3
+const showFlashMessage = (message) => {
+  const flashMessageEle = getElementById('flashcard-wrapper')
+
+  flashMessageEle.style.display = 'block'
+  flashMessageEle.innerHTML = `<center><p>${message}</p></center>`
+
+  setTimeout(() => {
+    flashMessageEle.innerHTML = ''
+    flashMessageEle.style.display = 'none'
+  }, 3000)
+}
+/*** End of helpsers */
+
+/***  init aws s3 */
 const initWithIAM = () => {
   let inputBucketName = getElementById('inputIAMBucketName')
   let inputRegion = getElementById('inputIAMRegion')
@@ -74,13 +89,13 @@ const initWithIAM = () => {
     !inputRegion.value || 
     !inputAccessKey.value ||
     !inputSecretKey.value
-  ) return alert('1 or more fields are missing')
+  ) return showFlashMessage('1 or more fields are missing')
 
   if (!inputBucketName.value.trim() || 
     !inputRegion.value.trim() || 
     !inputAccessKey.value.trim() ||
     !inputSecretKey.value.trim()
-  ) return alert('1 or more fields are missing')
+  ) return showFlashMessage('1 or more fields are missing')
 
   const credentials = {
     accessKeyId: inputAccessKey.value.trim(),
@@ -119,12 +134,12 @@ const initWithPool = () => {
   if (!inputBucketName.value || 
     !inputRegion.value || 
     !inputPoolID.value
-  ) return alert('1 or more fields are missing')
+  ) return showFlashMessage('1 or more fields are missing')
 
   if (!inputBucketName.value.trim() || 
     !inputRegion.value.trim() || 
     !inputPoolID.value.trim()
-  ) return alert('1 or more fields are missing')
+  ) return showFlashMessage('1 or more fields are missing')
 
   SETTING_CREDENTIALS = {
     bucketName: inputBucketName.value.trim(),
@@ -149,7 +164,9 @@ const initWithPool = () => {
     window.whichCredential = ''
   })
 }
+/***  End of initialization */
 
+/** UI maipulations */
 const statusElement = (credentialType, isBad=true) => {
   const statusElement = getElementById(`check-${credentialType}-credentials`)
 
@@ -171,7 +188,6 @@ const isS3ConnectedCheck = async () => {
     )
 
     window.s3CredentialsStatus = SUCCESS_STATUS
-
   } catch (error) {
     window.s3CredentialsStatus = ERROR_STATUS
   }
@@ -179,6 +195,9 @@ const isS3ConnectedCheck = async () => {
 
 /// save credentials to localstorage
 const saveIAMCredentials = () => {
+  if (s3CredentialsStatus !== SUCCESS_STATUS) {
+    initWithIAM()
+  }
   localStorage.setItem('settingCredentials', JSON.stringify(SETTING_CREDENTIALS))
   setSetting()
 
@@ -191,10 +210,13 @@ const saveIAMCredentials = () => {
   inputBucketName.value = SETTING_CREDENTIALS.bucketName
   inputAccessKey.value = SETTING_CREDENTIALS.credentials.accessKeyId.slice(0,2) + '***'
   inputSecretKey.value = SETTING_CREDENTIALS.credentials.secretAccessKey.slice(0,2) + '***'
-  alert("credentials were successfully saved")
+  showFlashMessage("credentials were successfully saved")
 }
 
 const savePoolCredentials = () => {
+  if (s3CredentialsStatus !== SUCCESS_STATUS) {
+    initWithPool()
+  }
   localStorage.setItem('settingCredentials', JSON.stringify(SETTING_CREDENTIALS))
   setSetting({ showIAM: false })
 
@@ -205,20 +227,21 @@ const savePoolCredentials = () => {
   inputRegion.value = SETTING_CREDENTIALS.region
   inputBucketName.value = SETTING_CREDENTIALS.bucketName
   inputPoolID.value = SETTING_CREDENTIALS.poolId.slice(0,2) + '***'
-  alert("credentials were successfully saved")
+  showFlashMessage("credentials were successfully saved")
 }
 
 /// setting up credentials for both IAM and Cognito Pool
 const editIAMCredentials = () => {
-  setSetting({isIAMDisabled: false})
+  setSetting({isIAMDisabled: false}) // to show the Iam pannel
   setIAMSettingCredentials()
 }
 
 const editPoolCredentials = () => {
-  setSetting({isPoolDisabled: false, showIAM: false})
-  setPoolSettingCredentials()
+  setSetting({isPoolDisabled: false, showIAM: false}) // to show the Pool pannel
+  setPoolSettingCredentials() // set the text fields with the appropriate data
 }
 
+/// sets the full credentials to show up in the text fields
 const setIAMSettingCredentials = () => {
   const inputBucketName = getElementById('inputIAMBucketName')
   const inputRegion = getElementById('inputIAMRegion')
@@ -237,6 +260,7 @@ const setIAMSettingCredentials = () => {
   }
 }
 
+/// sets the full credentials to show up in the text fields
 const setPoolSettingCredentials = () => {
   const inputBucketName = getElementById('inputPoolBucketName')
   const inputRegion = getElementById('inputPoolRegion')
@@ -253,15 +277,20 @@ const setPoolSettingCredentials = () => {
     statusElement(COGNITOPOOL_TEXT, s3CredentialsStatus === ERROR_STATUS)
   }
 }
+/** End of UI maipulations */
 
-/* AWS S3 CRUD Operations */
-// list objects
+/**** AWS S3 CRUD Operations */
+// list objects (Reading)
 const listObjects = async () => {
   const objectListElement = getElementById("object-list")
 
   if (s3CredentialsStatus === ERROR_STATUS || s3CredentialsStatus === NOT_INIT_STATUS) {
-    alert(S3_NOT_INIT_TEXT)
-    const htmlTemplate = "<p class='center'>You don't have any object. Start adding objects to your S3 bucket by clicking the New Object button</p>";
+    showFlashMessage(S3_NOT_INIT_TEXT)
+    const htmlTemplate = `
+    <p class='center'>
+      <i class="fa fa-warning"></i> ${S3_NOT_INIT_TEXT}
+    </p>
+    `;
     objectListElement.innerHTML = htmlTemplate;
     return 
   } 
@@ -272,7 +301,10 @@ const listObjects = async () => {
     );
 
     if (!data.Contents || data.Contents.length === 0) {
-      const htmlTemplate = "<p class='center'>You do not have any object in this S3 bucket. Start adding objects to your S3 bucket by clicking the add button</p>";
+      const htmlTemplate = `
+      <p class='center'>
+        You do not have any object in this S3 bucket. Start adding objects to your S3 bucket by clicking the add button
+      </p>`;
       objectListElement.innerHTML = htmlTemplate;
     } else {
       data.Contents.map((content) => {
@@ -291,13 +323,13 @@ const listObjects = async () => {
         });
       }
     } catch (err) {
-      return alert("There was an error listing your objects: " + err.message);
+      return showFlashMessage("There was an error listing your objects: " + err.message);
     }
   };
   
-  // Add an object to an bucket
+  // Add an object to an bucket (create)
   const addObject = async () => {
-    if (s3CredentialsStatus === ERROR_STATUS || s3CredentialsStatus === NOT_INIT_STATUS) return alert(S3_NOT_INIT_TEXT)
+    if (s3CredentialsStatus === ERROR_STATUS || s3CredentialsStatus === NOT_INIT_STATUS) return showFlashMessage(S3_NOT_INIT_TEXT)
     const files = document.getElementById("objectInput").files;
     try {
       const file = files[0];
@@ -310,21 +342,21 @@ const listObjects = async () => {
       };
       try {
         await s3.send(new PutObjectCommand(uploadParams));
-        alert(`Successfully uploaded ${fileName}.`);
+        showFlashMessage(`Successfully uploaded ${fileName}.`);
         setDashboard()
       } catch (err) {
-        return alert("There was an error uploading your file object: ", err.message);
+        return showFlashMessage("There was an error uploading your file object: ", err.message);
       }
     } catch (err) {
       if (!files.length) {
-        return alert("Choose a file to upload first.");
+        return showFlashMessage("Choose a file to upload first.");
       }
     }
   };
   
-  // Delete an object from the bucket
+  // Delete an object from the bucket (delete)
   const deleteObject = async (objectKey) => {
-    if (s3CredentialsStatus === ERROR_STATUS || s3CredentialsStatus === NOT_INIT_STATUS) return alert(S3_NOT_INIT_TEXT)
+    if (s3CredentialsStatus === ERROR_STATUS || s3CredentialsStatus === NOT_INIT_STATUS) return showFlashMessage(S3_NOT_INIT_TEXT)
       try {
         const params = {
           Bucket: bucketName,
@@ -333,8 +365,8 @@ const listObjects = async () => {
         };
         await s3.send(new DeleteObjectCommand(params));
         setDashboard();
-        return alert(`Successfully deleted ${objectKey}.`);
+        return showFlashMessage(`Successfully deleted ${objectKey}.`);
       } catch (err) {
-        return alert(`There was an error deleting ${objectKey}: ${err.message}`);
+        return showFlashMessage(`There was an error deleting ${objectKey}: ${err.message}`);
       }
   };

@@ -16,3 +16,19 @@ body .btn-primary {
 .panel-group .panel-accordion .panel-heading a {
     color: #282C38;
 }
+
+#flashcard-wrapper {
+    position: fixed;
+    z-index: 5000;
+    width: 40vw;
+    padding: 1em 3em;
+    height: auto;
+    border: 2px solid #ffcc00;
+    background-color: white;
+    color: #282C38;
+    box-shadow: 0 6px 10px -3px rgb(0 0 0 / 30%);
+    display: none;
+    top: 7vh;
+    left: 50%;
+    transform: translateX(-50%);
+}
