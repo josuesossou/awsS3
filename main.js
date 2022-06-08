@@ -195,7 +195,7 @@ const statusElement = (
     if (showFlash) showFlashMessage('Failed to initialize')
     if (isSettingsPage) {
       statusElement.innerHTML = `
-        <button type="button" class="btn btn-danger">Bad Credentials</button>
+        <button type="button" class="btn btn-danger">Failed To Initialize</button>
      `
       const credentialTypeText = credentialType === IAM_TEXT ? COGNITOPOOL_TEXT : IAM_TEXT
       removeStatusElement(credentialTypeText)
@@ -206,7 +206,7 @@ const statusElement = (
   if (showFlash) showFlashMessage('Successfully initialized')
   if (isSettingsPage) {
     statusElement.innerHTML = `
-      <button type="button" class="btn btn-success">Connected</button>
+      <button type="button" class="btn btn-success">Initialize Successful <i class="ml-2 fa fa-gear"></i></button>
     `
     const credentialTypeText = credentialType === IAM_TEXT ? COGNITOPOOL_TEXT : IAM_TEXT
     removeStatusElement(credentialTypeText)

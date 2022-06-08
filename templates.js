@@ -265,14 +265,37 @@ const setNewObject = () => {
     appElement.innerHTML = template
 }
 
-const iamHelpSteps = [
-    '<b>Step1:</b> Copy the code below (on this page) then open your S3 bucket page',
-    '<b>Step2:</b> Click on the "Permissions" tab',
-    '<b>Step3:</b> Scroll down until you find the card with title, Cross-origin resource sharing (CORS)',
-    '<b>Step4:</b> Click on the "Edit" button',
-    '<b>Step5:</b> Paste the code from Step1 into the edit box',
-    '<b>Step6:</b> Click on "Save changes"',
-    '<b>Step7:</b> On this page(s3.html), Click on "Setting" on the left and enter your s3 bucket IAM credentials and other information required'
+const prereqSteps = [
+    '<b>Step 1:</b> Copy the code below (on this page) then open your S3 bucket page',
+    '<b>Step 2:</b> Click on the "Permissions" tab',
+    '<b>Step 3:</b> Scroll down until you find the card with title, Cross-origin resource sharing (CORS)',
+    '<b>Step 4:</b> Click on the "Edit" button',
+    '<b>Step 5:</b> Paste the code from Step1 into the edit box',
+    '<b>Step 6:</b> Click on "Save changes"',
+    '<b>Step 7:</b> On this page(s3.html), Click on "Setting" on the left', 
+    '<b>Step 8:</b> Enter your s3 bucket IAM credentials and other information in the IAM Credentials form'
+]
+
+const initErrorCauses = [
+    '<b>You do not have an internet connection. Make sure you can navigate to other websites',
+    'Your secret or access keys are incorrect or your pool ID is incorrect. Make sure that your credentials are correct. It is recommended to copy and paste them to avoid mistakes.',
+    'Your IAM user or Cognito Identity Pool is not active. Make sure that the IAM user exist and your identity pool is active. You can check these in the aws console.',
+    'You do not have Core Policy that enables all CRUD operations to your bucket. Make sure you have followed the instructions under Prerequisite.',
+    '* If you keep seeing (please initialize s3 credentials on the settings page) on the dashboard even after you click on "Initialize Credentials" button; <u>You need to click "Save Credentials"</u> first so that the app can recognise the new credentials.<b>',
+    'For any other issues not lister, please create an issue on the github page for the project. Thanks :)</b>'
+]
+
+const cognitoHelpSteps = [
+    '<b>Step 1:</b> Login to AWS.',
+    '<b>Step 2:</b> Click Services.',
+    '<b>Step 3:</b> Search for Cognito.',
+    '<b>Step 4:</b> Click Cognito.',
+    '<b>Step 5:</b> Click Manage Identity Pools.',
+    '<b>Step 6:</b> Click on the name of the Identity Pool you would like the IdentityPoolId of.',
+    '<b>Step 7:</b> Click on Sample code.',
+    '<b>Step 8:</b> Copy the only text in red (that is your pool id) without the quotations.',
+    '<b>Step 9:</b> On this page(s3.html), Click on "Setting" on the left',
+    '<b>Step 10:</b> Paste the pool ID you just copied in Step 8 in the Pool ID text field under Cognito Pool Credentials form'
 ]
 
 const jsonFormat = [
@@ -298,34 +321,64 @@ const jsonFormat = [
 const setHelp = async () => {
     setLiActive(pageIndexes.help)
 
-    const contentIAMHTML = `
+    const contentPrereqHTML = `
         <p> After you created your aws s3 bucket, open your bucket page and follow these steps: <p>
         <ul class="widget-todo-list" id="object-list" onload="listObjects()">
-            ${iamHelpSteps.map(text => '<li class="ml-sm-9">' + text + "</li>").join('')}
+            ${prereqSteps.map(text => '<li class="ml-sm-9">' + text + "</li>").join('')}
         </ul>
         <hr class="solid mt-sm mb-lg">
         <h5>Code</h5>
         <pre>${JSON.stringify(jsonFormat, null, 4)}</pre>
     `
+    const contentIAMHTML = `
+        <p>To use IAM Credentials Initialization, you must first create IAM user.</p>
+        <p>Follow the instructions to create IAM user <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html" target="__blank">here</a>.</p>
+        <p>Your Access and Secret key will be shown to you when IAM user is created. Make sure to copy and paste them in the appropriate text file under IAM Credentials Form</p>
+    `
     const contentPoolHTML = `
-
+        <p>To use Cognito Credentials, you must first create a cognito user pool.</p>
+        <p>Follow the instructions to create a user pool <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/tutorial-create-user-pool.html" target="__blank">here</a>.</p>
+        <p>To find your pool ID, follow these steps</p>
+        <ul class="widget-todo-list" id="object-list" onload="listObjects()">
+            ${cognitoHelpSteps.map(text => '<li class="ml-sm-9">' + text + "</li>").join('')}
+        </ul>
+    `
+    const contentFailedToInitHTML = `
+        <p>Here are some of the issues that can cause [Failed to Initialized] Errors or the dashboard still says you need initialize even though you already did.</p>
+        <ul class="widget-todo-list " id="object-list" onload="listObjects()">
+            ${initErrorCauses.map(text => '<li class="ml-sm-9">' + text + "</li>").join('')}
+        </ul>
     `
     const actions = []
+    const contentPrerequisite = getCollapseContent({ 
+        contentHTML: contentPrereqHTML, 
+        actions,
+        contentName:'Prerequisite - Do this before initializing credentials on the Settings Page', 
+        contentID:'prereq',
+        collapse: ''
+    })
     const contentIAM = getCollapseContent({ 
         contentHTML: contentIAMHTML, 
         actions,
-        contentName:'Use IAM Credentials Prerequisite', 
+        contentName:'How To Get IAM Access Key and Secret Key', 
         contentID:'helpIam',
-        collapse: 'in'
+        collapse: ''
     })
     const contentPool = getCollapseContent({ 
         contentHTML: contentPoolHTML, 
         actions,
-        contentName:'Use Cognito Pool Credentials Prerequisite', 
+        contentName:'How To Get Cognito Identity Pool ID', 
         contentID:'helpPool',
-        collapse: 'in'
+        collapse: ''
     })
-    const content = contentIAM + "<br>" + contentPool 
+    const contentFailedToInit = getCollapseContent({ 
+        contentHTML: contentFailedToInitHTML, 
+        actions,
+        contentName:'Failed To Initialize Causes', 
+        contentID:'failedtoinit',
+        collapse: ''
+    })
+    const content = contentPrerequisite + "<br>" + contentIAM + "<br>" + contentPool + "<br>" + contentFailedToInit
 
     const template = getHTMLTemplate(
         'Help', 
