@@ -88,6 +88,12 @@
                                         <span>Setting</span>
                                     </a>
                                 </li>
+                                <li>
+                                    <a onpointerup="setHelp()">
+                                        <i class="fa fa-question" aria-hidden="true"></i>
+                                        <span>Help</span>
+                                    </a>
+                                </li>
                             </ul>
                         </nav>
             
@@ -105,9 +111,12 @@
 
     </section>
 
-    <div id="flashcard-wrapper">
+    <div id="flashcard-wrapper"></div>
 
-    </div>
+    <!-- local js that support aws s3 -->
+    <script  src="bundle/bundle.js"></script>
+    <script  src="main.js"></script>
+    <script src="templates.js"></script>
 
     <!-- Vendor For Styles -->
     <script src="assets/vendor/jquery/jquery.js"></script>
@@ -121,11 +130,5 @@
     <!-- JS for styles -->
     <script src="assets/javascripts/theme.js"></script>
     <script src="assets/vendor/bootstrap-fileupload/bootstrap-fileupload.min.js"></script>
-
-    <!-- local js that support aws s3 -->
-    <script  src="bundle.js"></script>
-    <script  src="main.js"></script>
-    <script src="templates.js"></script>
-
 </body>
 </html>

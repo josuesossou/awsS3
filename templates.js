@@ -1,5 +1,12 @@
 const appElement = document.getElementById('app')
 
+const pageIndexes = {
+    dashboard: 0,
+    addNewObject: 1,
+    settings: 2,
+    help: 3
+}
+
 const getHTMLTemplate = (templateName, content) => {
     const templateHeader = `
     <header class="page-header">
@@ -44,11 +51,12 @@ const getCollapseContent = ({contentHTML='', actions=[], contentName='', content
         <div id="${contentID}" class="accordion-body collapse ${collapse}">
             <div class="panel-body">
                 ${contentHTML}
-                <hr class="solid mt-sm mb-lg">
+             
                 <div class="row-sm-12 center">
+                    ${actions.length > 0 ? '<hr class="solid mt-sm mb-lg">' : ''}
                     ${actions.map(action => (`
                         <button type="button" class="btn btn-${action.type}" ${action.method}>${action.name}</button>
-                    `))}
+                    `)).join('')}
                 </div>
             </div>
         </div>
@@ -69,7 +77,7 @@ const setLiActive = (index) => {
 }
 
 const setDashboard = async () => {
-    setLiActive(0)
+    setLiActive(pageIndexes.dashboard)
     const contentHTML = `
         <ul class="widget-todo-list" id="object-list" onload="listObjects()"></ul>
     `
@@ -82,13 +90,21 @@ const setDashboard = async () => {
     )
 
     appElement.innerHTML = template
-    await loadCredentials()
-    listObjects()
+    loadCredentials()
+    .then(() => {
+        listObjects()
+    })
+    .catch(e => {
+        listObjects()
+        console.log(e.message)
+    })
+
 }
 
 const setSetting = ({isIAMDisabled=true, isPoolDisabled=true, showIAM=true} = {}) => {
-    setLiActive(2)
+    setLiActive(pageIndexes.settings)
     const IAMcontentHTML = `
+    <p class="center"><i class="fa fa-warning"></i> Follow instructions on help page before initializing</p>
     <form class="form-horizontal form-bordered" method="get">
         <div class="form-group">
             <label class="col-md-3 control-label" for="inputIAMBucketName">Bucket Name</label>
@@ -111,7 +127,7 @@ const setSetting = ({isIAMDisabled=true, isPoolDisabled=true, showIAM=true} = {}
         <div class="form-group">
             <label class="col-md-3 control-label" for="inputIAMSecretKey">Secret Key</label>
             <div class="col-md-6">
-                <input type="text" class="form-control" id="inputIAMSecretKey" ${isIAMDisabled ? 'disabled' : ''}>
+                <input type="text" class="secureInput form-control" id="inputIAMSecretKey" ${isIAMDisabled ? 'disabled' : ''}>
             </div>
         </div>
     </form>
@@ -200,15 +216,16 @@ const setSetting = ({isIAMDisabled=true, isPoolDisabled=true, showIAM=true} = {}
     )
 
     appElement.innerHTML = template
-    // setIAMSettingCredentials()
-    if (whichCredential === IAM_TEXT) {
-        statusElement(IAM_TEXT, s3CredentialsStatus === ERROR_STATUS)
-    }
+
+    setIAMSettingCredentials()
+    setPoolSettingCredentials()
+
+    checkesInitStatus({ isSettingsPage: true, showFlash: false })
 }
 
 
 const setNewObject = () => {
-    setLiActive(1)
+    setLiActive(pageIndexes.addNewObject)
     const contentHTML = `
     <form class="form-horizontal form-bordered" method="get">
         <div class="form-group">
@@ -242,6 +259,76 @@ const setNewObject = () => {
 
     const template = getHTMLTemplate(
         'Add New Object', 
+        content, 
+    )
+
+    appElement.innerHTML = template
+}
+
+const iamHelpSteps = [
+    '<b>Step1:</b> Copy the code below (on this page) then open your S3 bucket page',
+    '<b>Step2:</b> Click on the "Permissions" tab',
+    '<b>Step3:</b> Scroll down until you find the card with title, Cross-origin resource sharing (CORS)',
+    '<b>Step4:</b> Click on the "Edit" button',
+    '<b>Step5:</b> Paste the code from Step1 into the edit box',
+    '<b>Step6:</b> Click on "Save changes"',
+    '<b>Step7:</b> On this page(s3.html), Click on "Setting" on the left and enter your s3 bucket IAM credentials and other information required'
+]
+
+const jsonFormat = [
+    {
+        "AllowedHeaders": [
+            "*"
+        ],
+        "AllowedMethods": [
+            "PUT",
+            "POST",
+            "GET",
+            "DELETE"
+        ],
+        "AllowedOrigins": [
+            "*"
+        ],
+        "ExposeHeaders": [
+            "ETag"
+        ]
+    }
+]
+
+const setHelp = async () => {
+    setLiActive(pageIndexes.help)
+
+    const contentIAMHTML = `
+        <p> After you created your aws s3 bucket, open your bucket page and follow these steps: <p>
+        <ul class="widget-todo-list" id="object-list" onload="listObjects()">
+            ${iamHelpSteps.map(text => '<li class="ml-sm-9">' + text + "</li>").join('')}
+        </ul>
+        <hr class="solid mt-sm mb-lg">
+        <h5>Code</h5>
+        <pre>${JSON.stringify(jsonFormat, null, 4)}</pre>
+    `
+    const contentPoolHTML = `
+
+    `
+    const actions = []
+    const contentIAM = getCollapseContent({ 
+        contentHTML: contentIAMHTML, 
+        actions,
+        contentName:'Use IAM Credentials Prerequisite', 
+        contentID:'helpIam',
+        collapse: 'in'
+    })
+    const contentPool = getCollapseContent({ 
+        contentHTML: contentPoolHTML, 
+        actions,
+        contentName:'Use Cognito Pool Credentials Prerequisite', 
+        contentID:'helpPool',
+        collapse: 'in'
+    })
+    const content = contentIAM + "<br>" + contentPool 
+
+    const template = getHTMLTemplate(
+        'Help', 
         content, 
     )
 

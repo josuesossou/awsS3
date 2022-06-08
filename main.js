@@ -4,9 +4,7 @@
 const S3_NOT_INIT_TEXT = 'please initialize s3 credentials on the settings page'
 const IAM_TEXT = 'iam'
 const COGNITOPOOL_TEXT = 'cognitopool'
-const SUCCESS_STATUS = 'success'
-const ERROR_STATUS = 'error' 
-const NOT_INIT_STATUS = 'not initialized'
+
 
 // Global Data
 let SETTING_CREDENTIALS = {
@@ -20,14 +18,15 @@ let SETTING_CREDENTIALS = {
   },
   poolId: ''
 }
-window.s3CredentialsStatus = NOT_INIT_STATUS
-window.whichCredential = ''
+// window.s3CredentialsStatus = NOT_INIT_STATUS
+// window.whichCredential = ''
 
-/**  helper functions**/
+/** helper functions **/
 const getElementById = (elementId) => {
   return document.getElementById(elementId)
 }
 
+// loadCredentials is only called on the dashboard page
 const loadCredentials = async () => {
   const settingCredentials = localStorage.getItem('settingCredentials')
   if (!settingCredentials) return 
@@ -35,51 +34,64 @@ const loadCredentials = async () => {
   SETTING_CREDENTIALS = JSON.parse(settingCredentials)
   if (!SETTING_CREDENTIALS.region || !SETTING_CREDENTIALS.bucketName) return
 
-  aws_init(
-    SETTING_CREDENTIALS.region.toLocaleLowerCase(), 
-    SETTING_CREDENTIALS.bucketName,
-    {iamCredentials: SETTING_CREDENTIALS.credentials})
+  if (!whichCredential) {
+    try {
+      await aws_init(
+        SETTING_CREDENTIALS.region.toLocaleLowerCase(), 
+        SETTING_CREDENTIALS.bucketName,
+        {iamCredentials: SETTING_CREDENTIALS.credentials})
 
-  await isS3ConnectedCheck()
-
-  if (s3CredentialsStatus === SUCCESS_STATUS) {
-    window.isAwsInit = true
-    window.whichCredential = IAM_TEXT
-    return
+    } catch (error) {
+      throw error
+    }
+    return;
   }
+  switch (whichCredential) {
+    case IAM_TEXT:
+      try {
+        await aws_init(
+          SETTING_CREDENTIALS.region.toLocaleLowerCase(), 
+          SETTING_CREDENTIALS.bucketName,
+          {iamCredentials: SETTING_CREDENTIALS.credentials})
   
-  aws_init(
-    SETTING_CREDENTIALS.region.toLocaleLowerCase(), 
-    SETTING_CREDENTIALS.bucketName, 
-    {withPoolId:false, poolID: SETTING_CREDENTIALS.poolId})
-  await isS3ConnectedCheck()
-
-  if (s3CredentialsStatus === ERROR_STATUS) {
-    window.isAwsInit = false
-    window.whichCredential = ''
-    return
+      } catch (error) {
+        throw error
+      }
+      return;
+    case COGNITOPOOL_TEXT:
+      try {
+        await aws_init(
+          SETTING_CREDENTIALS.region.toLocaleLowerCase(), 
+          SETTING_CREDENTIALS.bucketName,
+          {withPoolId:true, poolID: SETTING_CREDENTIALS.poolId})
+  
+      } catch (error) {
+        throw error
+      }
+      return;
+    default:
+      try {
+        await aws_init(
+          SETTING_CREDENTIALS.region.toLocaleLowerCase(), 
+          SETTING_CREDENTIALS.bucketName,
+          {iamCredentials: SETTING_CREDENTIALS.credentials})
+  
+      } catch (error) {
+        throw error
+      }
+      return;
   }
-
-  window.isAwsInit = true
-  window.whichCredential = COGNITOPOOL_TEXT
-  return
 }
 
-const showFlashMessage = (message) => {
-  const flashMessageEle = getElementById('flashcard-wrapper')
-
-  flashMessageEle.style.display = 'block'
-  flashMessageEle.innerHTML = `<center><p>${message}</p></center>`
-
-  setTimeout(() => {
-    flashMessageEle.innerHTML = ''
-    flashMessageEle.style.display = 'none'
-  }, 3000)
+const checkesInitStatus = ({isSettingsPage=false, showFlash=false}) => {
+  statusElement(
+    whichCredential, s3Connected, 
+    {isSettingsPage, showFlash})
 }
 /*** End of helpsers */
 
 /***  init aws s3 */
-const initWithIAM = () => {
+const initWithIAM = async () => {
   let inputBucketName = getElementById('inputIAMBucketName')
   let inputRegion = getElementById('inputIAMRegion')
   let inputAccessKey = getElementById('inputIAMAccessKey')
@@ -111,22 +123,20 @@ const initWithIAM = () => {
     poolId: SETTING_CREDENTIALS.poolId
   }
  
-  aws_init(
-    SETTING_CREDENTIALS.region.toLocaleLowerCase(), 
-    SETTING_CREDENTIALS.bucketName, 
-  {iamCredentials: credentials})
-  isS3ConnectedCheck()
-  .then(()=> {
-    statusElement(IAM_TEXT, false)
-    window.whichCredential = IAM_TEXT
-  })
-  .catch(() => {
-    statusElement(IAM_TEXT)
-    window.whichCredential = ''
-  })
+  try {
+    await aws_init(
+      SETTING_CREDENTIALS.region.toLocaleLowerCase(), 
+      SETTING_CREDENTIALS.bucketName,
+      {iamCredentials: SETTING_CREDENTIALS.credentials})
+
+      checkesInitStatus({ isSettingsPage: true, showFlash: true })
+  } catch (error) {
+    console.log(error)
+    checkesInitStatus({ isSettingsPage: true, showFlash: true })
+  }
 }
 
-const initWithPool = () => {
+const initWithPool = async () => {
   const inputBucketName = getElementById('inputPoolBucketName')
   const inputRegion = getElementById('inputPoolRegion')
   const inputPoolID = getElementById('inputPoolID')
@@ -147,98 +157,96 @@ const initWithPool = () => {
     credentials: SETTING_CREDENTIALS.credentials,
     poolId: inputPoolID.value.trim()
   }
- 
-  aws_init(
-    SETTING_CREDENTIALS.region.toLocaleLowerCase(), 
-    SETTING_CREDENTIALS.bucketName, 
-    {withPoolId:false, poolID: SETTING_CREDENTIALS.poolId}
-  )
 
-  isS3ConnectedCheck()
-  .then(()=> {
-    statusElement(COGNITOPOOL_TEXT, false)
-    window.whichCredential = COGNITOPOOL_TEXT
-  })
-  .catch(() => {
-    statusElement(COGNITOPOOL_TEXT)
-    window.whichCredential = ''
-  })
+  try {
+    await aws_init(
+      SETTING_CREDENTIALS.region.toLocaleLowerCase(), 
+      SETTING_CREDENTIALS.bucketName,
+      {withPoolId:true, poolID: SETTING_CREDENTIALS.poolId})
+    checkesInitStatus({ isSettingsPage: true, showFlash: true })
+  } catch (error) {
+    checkesInitStatus({ isSettingsPage: true, showFlash: true })
+    console.log(error)
+  }
 }
 /***  End of initialization */
 
 /** UI maipulations */
-const statusElement = (credentialType, isBad=true) => {
-  const statusElement = getElementById(`check-${credentialType}-credentials`)
 
-  if (isBad) {
-    statusElement.innerHTML = `
-      <button type="button" class="btn btn-danger">Bad Credentials</button>
-    `
-    return
-  } 
-  statusElement.innerHTML = `
-    <button type="button" class="btn btn-success">Connected</button>
-  `
+const showFlashMessage = (message) => {
+  const flashMessageEle = getElementById('flashcard-wrapper')
+
+  flashMessageEle.style.display = 'block'
+  flashMessageEle.innerHTML = `<center><p>${message}</p></center>`
+
+  setTimeout(() => {
+    flashMessageEle.innerHTML = ''
+    flashMessageEle.style.display = 'none'
+  }, 3000)
 }
 
-const isS3ConnectedCheck = async () => {
-  try {
-    await s3.send(
-      new ListObjectsCommand({ Delimiter: '/', Bucket: bucketName,  })
-    )
+const statusElement = (
+  credentialType, s3IsConnected, 
+  {isSettingsPage=false, showFlash=false} = {}
+) => {
+  const statusElement = getElementById(`check-${credentialType}-credentials`)
 
-    window.s3CredentialsStatus = SUCCESS_STATUS
-  } catch (error) {
-    window.s3CredentialsStatus = ERROR_STATUS
+  if (!s3IsConnected) {
+    if (showFlash) showFlashMessage('Failed to initialize')
+    if (isSettingsPage) {
+      statusElement.innerHTML = `
+        <button type="button" class="btn btn-danger">Bad Credentials</button>
+     `
+      const credentialTypeText = credentialType === IAM_TEXT ? COGNITOPOOL_TEXT : IAM_TEXT
+      removeStatusElement(credentialTypeText)
+    }
+    return
   }
+
+  if (showFlash) showFlashMessage('Successfully initialized')
+  if (isSettingsPage) {
+    statusElement.innerHTML = `
+      <button type="button" class="btn btn-success">Connected</button>
+    `
+    const credentialTypeText = credentialType === IAM_TEXT ? COGNITOPOOL_TEXT : IAM_TEXT
+    removeStatusElement(credentialTypeText)
+  }
+}
+
+const removeStatusElement = (credentialType) => {
+  const statusElement = getElementById(`check-${credentialType}-credentials`)
+  statusElement.innerHTML = ''
 }
 
 /// save credentials to localstorage
 const saveIAMCredentials = () => {
-  if (s3CredentialsStatus !== SUCCESS_STATUS) {
+  // initialises S3 client with IAM credentials if S3 is not cennected using IAM credentials
+  if (!s3Connected || whichCredential === COGNITOPOOL_TEXT) {
     initWithIAM()
   }
   localStorage.setItem('settingCredentials', JSON.stringify(SETTING_CREDENTIALS))
-  setSetting()
-
-  const inputBucketName = getElementById('inputIAMBucketName')
-  const inputRegion = getElementById('inputIAMRegion')
-  const inputAccessKey = getElementById('inputIAMAccessKey')
-  const inputSecretKey = getElementById('inputIAMSecretKey')
-
-  inputRegion.value = SETTING_CREDENTIALS.region
-  inputBucketName.value = SETTING_CREDENTIALS.bucketName
-  inputAccessKey.value = SETTING_CREDENTIALS.credentials.accessKeyId.slice(0,2) + '***'
-  inputSecretKey.value = SETTING_CREDENTIALS.credentials.secretAccessKey.slice(0,2) + '***'
+  setSetting({isIAMDisabled: true, showIAM: true})
   showFlashMessage("credentials were successfully saved")
 }
 
 const savePoolCredentials = () => {
-  if (s3CredentialsStatus !== SUCCESS_STATUS) {
+  // initialises S3 client with Cognito pool credentials if S3 is not cennected using Cognito pool credentials
+  if (!s3Connected || whichCredential === IAM_TEXT) {
     initWithPool()
   }
+
   localStorage.setItem('settingCredentials', JSON.stringify(SETTING_CREDENTIALS))
-  setSetting({ showIAM: false })
-
-  const inputBucketName = getElementById('inputPoolBucketName')
-  const inputRegion = getElementById('inputPoolRegion')
-  const inputPoolID = getElementById('inputPoolID')
-
-  inputRegion.value = SETTING_CREDENTIALS.region
-  inputBucketName.value = SETTING_CREDENTIALS.bucketName
-  inputPoolID.value = SETTING_CREDENTIALS.poolId.slice(0,2) + '***'
+  setSetting({isIAMDisabled: true, showIAM: false})
   showFlashMessage("credentials were successfully saved")
 }
 
 /// setting up credentials for both IAM and Cognito Pool
 const editIAMCredentials = () => {
-  setSetting({isIAMDisabled: false}) // to show the Iam pannel
-  setIAMSettingCredentials()
+  setSetting({isIAMDisabled: false, showIAM: true}) // to show the Iam pannel
 }
 
 const editPoolCredentials = () => {
   setSetting({isPoolDisabled: false, showIAM: false}) // to show the Pool pannel
-  setPoolSettingCredentials() // set the text fields with the appropriate data
 }
 
 /// sets the full credentials to show up in the text fields
@@ -248,16 +256,10 @@ const setIAMSettingCredentials = () => {
   const inputAccessKey = getElementById('inputIAMAccessKey')
   const inputSecretKey = getElementById('inputIAMSecretKey')
 
-  loadCredentials()
-
   inputRegion.value = SETTING_CREDENTIALS.region
   inputBucketName.value = SETTING_CREDENTIALS.bucketName
   inputAccessKey.value = SETTING_CREDENTIALS.credentials.accessKeyId
   inputSecretKey.value = SETTING_CREDENTIALS.credentials.secretAccessKey
-
-  if (whichCredential === IAM_TEXT) {
-    statusElement(IAM_TEXT, s3CredentialsStatus === ERROR_STATUS)
-  }
 }
 
 /// sets the full credentials to show up in the text fields
@@ -266,16 +268,9 @@ const setPoolSettingCredentials = () => {
   const inputRegion = getElementById('inputPoolRegion')
   const inputPoolID = getElementById('inputPoolID')
 
-  loadCredentials()
-
   inputRegion.value = SETTING_CREDENTIALS.region
   inputBucketName.value = SETTING_CREDENTIALS.bucketName
   inputPoolID.value = SETTING_CREDENTIALS.poolId
-  statusElement('cognitoPool', s3CredentialsStatus === ERROR_STATUS)
-
-  if (whichCredential === COGNITOPOOL_TEXT) {
-    statusElement(COGNITOPOOL_TEXT, s3CredentialsStatus === ERROR_STATUS)
-  }
 }
 /** End of UI maipulations */
 
@@ -284,15 +279,14 @@ const setPoolSettingCredentials = () => {
 const listObjects = async () => {
   const objectListElement = getElementById("object-list")
 
-  if (s3CredentialsStatus === ERROR_STATUS || s3CredentialsStatus === NOT_INIT_STATUS) {
-    showFlashMessage(S3_NOT_INIT_TEXT)
+  if (!s3Connected) {
     const htmlTemplate = `
     <p class='center'>
       <i class="fa fa-warning"></i> ${S3_NOT_INIT_TEXT}
     </p>
     `;
     objectListElement.innerHTML = htmlTemplate;
-    return 
+    return
   } 
 
   try {
@@ -323,13 +317,21 @@ const listObjects = async () => {
         });
       }
     } catch (err) {
-      return showFlashMessage("There was an error listing your objects: " + err.message);
+      const htmlTemplate = `
+      <p class='center'>
+        <i class="fa fa-warning"></i> There was an error listing your objects: ${err.message}
+      </p>
+      `;
+      objectListElement.innerHTML = htmlTemplate;
+      showFlashMessage();
     }
   };
   
   // Add an object to an bucket (create)
   const addObject = async () => {
-    if (s3CredentialsStatus === ERROR_STATUS || s3CredentialsStatus === NOT_INIT_STATUS) return showFlashMessage(S3_NOT_INIT_TEXT)
+    if (!s3Connected) 
+      return showFlashMessage(S3_NOT_INIT_TEXT)
+
     const files = document.getElementById("objectInput").files;
     try {
       const file = files[0];
@@ -356,7 +358,7 @@ const listObjects = async () => {
   
   // Delete an object from the bucket (delete)
   const deleteObject = async (objectKey) => {
-    if (s3CredentialsStatus === ERROR_STATUS || s3CredentialsStatus === NOT_INIT_STATUS) return showFlashMessage(S3_NOT_INIT_TEXT)
+    if (!s3Connected) return showFlashMessage(S3_NOT_INIT_TEXT)
       try {
         const params = {
           Bucket: bucketName,

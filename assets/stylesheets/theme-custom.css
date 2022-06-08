@@ -11,6 +11,16 @@ body .btn-primary {
     text-shadow: rgb(0 0 0 / 25%) 0px -1px 0px;
     border-color: #ffcc00;
     background-color: #ffcc00;
+    transition: all .3s;
+}
+body.btn {
+    transition: all .3s;
+}
+
+body .btn-primary:hover {
+    color: #282C38;
+    border-color: #fad74b;
+    background-color: #fad74b;
 }
 
 .panel-group .panel-accordion .panel-heading a {
@@ -31,4 +41,7 @@ body .btn-primary {
     top: 7vh;
     left: 50%;
     transform: translateX(-50%);
+}
+input.secureInput {
+    -webkit-text-security: disc;
 }
